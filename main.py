@@ -23,14 +23,14 @@ URL_REGISTRO_WELTRADE = "https://gowt.net/ib62670"
 URL_VIDEO_WELTRADE = "https://youtu.be/7CfHPBsIDC4"
 URL_TELEGRAM_SOPORTE = "https://t.me/soportecomunidadentra"
 
-# URLs de Activos Multimedia en GitHub
-URL_IMG_P1 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/mensaje1-bienvenida.jpg"
-URL_IMG_P2 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/mensaje2-beneficios.jpeg"
-URL_IMG_P3 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/mensaje3-guia-id.jpg"
-URL_IMG_P4 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/mensaje4-telegram.jpg"
+# URLs de Activos Multimedia en GitHub (con nombres exactos de los archivos)
+URL_IMG_PASO_1 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/mensaje1-bienvenida.jpg.jpeg"
+URL_IMG_P2 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/mensaje2-beneficios.jpeg.jpeg"
+URL_IMG_P3 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/mensaje3-guia-id.jpg.png"
+URL_IMG_P4 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/mensaje4-telegram.jpg.png"
 URL_AUDIO_P4 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/audio-bienvenida-telegram.mp3"
-URL_VIDEO_1 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/video-seguimiento-1.mp4"
-URL_VIDEO_2 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/video-seguimiento-2.mp4"
+URL_VIDEO_1 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/video-seguimiento-1.mp4.mp4"
+URL_VIDEO_2 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/video-seguimiento-2.mp4.mp4"
 
 ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
