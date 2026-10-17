@@ -25,6 +25,7 @@ URL_TELEGRAM_SOPORTE = "https://t.me/soportecomunidadentra"
 
 # URLs de Activos Multimedia en GitHub (con nombres exactos de los archivos)
 URL_IMG_PASO_1 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/mensaje1-bienvenida.jpg.jpeg"
+URL_IMG_P1 = URL_IMG_PASO_1
 URL_IMG_P2 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/mensaje2-beneficios.jpeg.jpeg"
 URL_IMG_P3 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/mensaje3-guia-id.jpg.png"
 URL_IMG_P4 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-whatsapp-gemini/main/mensaje4-telegram.jpg.png"
@@ -97,7 +98,7 @@ def reiniciar_usuario(telefono):
 # ENVÍOS CON WHATSAPP API
 # ==========================================
 def enviar_peticion_whatsapp(payload):
-    url = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
+    url = f"https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages"
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
         "Content-Type": "application/json"
@@ -105,7 +106,7 @@ def enviar_peticion_whatsapp(payload):
     try:
         resp = requests.post(url, headers=headers, json=payload, timeout=15)
         print(f"Respuesta WhatsApp: {resp.status_code} - {resp.text}")
-        return resp.json()
+        return resp
     except Exception as e:
         print(f"Error WhatsApp: {e}")
         return None
@@ -119,8 +120,7 @@ def enviar_texto(destinatario, texto):
     })
 
 def enviar_imagen_con_caption(destinatario, url_imagen, caption_texto):
-    # Envía la imagen con el texto integrado en el pie de foto
-    return enviar_peticion_whatsapp({
+    payload = {
         "messaging_product": "whatsapp",
         "to": destinatario,
         "type": "image",
@@ -128,7 +128,13 @@ def enviar_imagen_con_caption(destinatario, url_imagen, caption_texto):
             "link": url_imagen,
             "caption": caption_texto
         }
-    })
+    }
+    resp = enviar_peticion_whatsapp(payload)
+    # Respaldo automático: si la imagen es rechazada, envía el texto
+    if (resp is None or resp.status_code != 200) and caption_texto:
+        print("Fallo en entrega de imagen, enviando texto de respaldo...")
+        enviar_texto(destinatario, caption_texto)
+    return resp
 
 def enviar_audio(destinatario, url_audio):
     return enviar_peticion_whatsapp({
@@ -198,7 +204,6 @@ def responder_objecion_fondos(telefono):
     enviar_texto(telefono, texto)
 
 def despachar_paso_4(telefono, id_weltrade, nombre):
-    # Alerta a tu WhatsApp personal
     alerta_personal = (
         f"🔔 *NUEVO PROSPECTO PENDIENTE DE VALIDACIÓN*\n"
         f"👤 Nombre: {nombre}\n"
@@ -208,7 +213,6 @@ def despachar_paso_4(telefono, id_weltrade, nombre):
     )
     enviar_texto(MI_WHATSAPP_NOTIFICACIONES, alerta_personal)
 
-    # Imagen + Audio + Texto
     texto_telegram = (
         "¡Perfecto! Ya validamos tu información y quiero darte la bienvenida oficial a nuestra comunidad.\n\n"
         "A partir de este momento continuamos todo el proceso a través de Telegram, donde te entregaré el acceso a los cursos, sesiones en vivo y beneficios.\n\n"
@@ -250,6 +254,10 @@ def procesar_con_gemini_seguro(prompt):
 # ==========================================
 # WEBHOOK
 # ==========================================
+@app.route("/", methods=["GET", "HEAD"])
+def inicio():
+    return "Bot WhatsApp Gemini Activo", 200
+
 @app.route("/webhook", methods=["GET"])
 def verificar():
     if request.args.get("hub.mode") == "subscribe" and request.args.get("hub.verify_token") == VERIFY_TOKEN:
@@ -291,7 +299,7 @@ def recibir():
                 if tipo_msg == "image":
                     image_id = msg.get("image", {}).get("id")
                     headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}"}
-                    media_meta = requests.get(f"https://graph.facebook.com/v19.0/{image_id}", headers=headers).json()
+                    media_meta = requests.get(f"https://graph.facebook.com/v21.0/{image_id}", headers=headers).json()
                     media_url = media_meta.get("url")
                     img_data = requests.get(media_url, headers=headers).content
 
@@ -406,4 +414,5 @@ def ejecutar_seguimientos():
     return jsonify({"status": "seguimientos completados"}), 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    puerto = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=puerto)
