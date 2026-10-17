@@ -35,7 +35,7 @@ URL_VIDEO_2 = "https://raw.githubusercontent.com/pachapachonpardo-debug/bot-what
 ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 # ==========================================
-# BASE DE DATOS LOCAL
+# BASE DE DATOS
 # ==========================================
 def init_db():
     conn = sqlite3.connect("embudo_entra.db")
@@ -86,8 +86,15 @@ def actualizar_usuario(telefono, **kwargs):
     conn.commit()
     conn.close()
 
+def reiniciar_usuario(telefono):
+    conn = sqlite3.connect("embudo_entra.db")
+    c = conn.cursor()
+    c.execute("DELETE FROM usuarios WHERE telefono = ?", (telefono,))
+    conn.commit()
+    conn.close()
+
 # ==========================================
-# ENVÍOS DE MENSAJERÍA
+# ENVÍOS CON WHATSAPP API
 # ==========================================
 def enviar_peticion_whatsapp(payload):
     url = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
@@ -97,6 +104,7 @@ def enviar_peticion_whatsapp(payload):
     }
     try:
         resp = requests.post(url, headers=headers, json=payload, timeout=15)
+        print(f"Respuesta WhatsApp: {resp.status_code} - {resp.text}")
         return resp.json()
     except Exception as e:
         print(f"Error WhatsApp: {e}")
@@ -110,16 +118,17 @@ def enviar_texto(destinatario, texto):
         "text": {"body": texto}
     })
 
-def enviar_imagen(destinatario, url_imagen, caption=""):
-    payload = {
+def enviar_imagen_con_caption(destinatario, url_imagen, caption_texto):
+    # Envía la imagen con el texto integrado en el pie de foto
+    return enviar_peticion_whatsapp({
         "messaging_product": "whatsapp",
         "to": destinatario,
         "type": "image",
-        "image": {"link": url_imagen}
-    }
-    if caption:
-        payload["image"]["caption"] = caption
-    return enviar_peticion_whatsapp(payload)
+        "image": {
+            "link": url_imagen,
+            "caption": caption_texto
+        }
+    })
 
 def enviar_audio(destinatario, url_audio):
     return enviar_peticion_whatsapp({
@@ -141,20 +150,18 @@ def enviar_video(destinatario, url_video, caption=""):
     return enviar_peticion_whatsapp(payload)
 
 # ==========================================
-# MENSAJES LITERALES DEL EMBUDO
+# MENSAJES EXACTOS DEL EMBUDO
 # ==========================================
 def despachar_paso_1(telefono, nombre):
-    enviar_imagen(telefono, URL_IMG_P1)
     texto = (
-        f"¡Hola! Te damos la bienvenida a ENTRA (Entrena Traders).\n\n"
+        f"¡Hola! Te damos la bienvenida a ENTRA (Entrena Traders). 📊🚀\n\n"
         "Somos una comunidad enfocada en la formación práctica en trading de índices sintéticos.\n\n"
         "Para conocer tu punto de partida: ¿tienes alguna experiencia previa operando en los mercados o te gustaría aprender completamente desde cero?"
     )
-    enviar_texto(telefono, texto)
+    enviar_imagen_con_caption(telefono, URL_IMG_P1, texto)
     actualizar_usuario(telefono, etapa=1)
 
 def despachar_paso_2(telefono):
-    enviar_imagen(telefono, URL_IMG_P2)
     texto = (
         "¡Excelente! En ENTRA te acompañamos paso a paso sin importar tu nivel.\n\n"
         "Formar parte de nuestra comunidad es completamente GRATUITO e incluye:\n"
@@ -164,7 +171,7 @@ def despachar_paso_2(telefono):
         "🔹 Práctica en cuentas de demostración sin arriesgar tu capital.\n\n"
         "¿Te gustaría conocer el paso para unirte y habilitar todos tus accesos?"
     )
-    enviar_texto(telefono, texto)
+    enviar_imagen_con_caption(telefono, URL_IMG_P2, texto)
     actualizar_usuario(telefono, etapa=2)
 
 def despachar_paso_3(telefono):
@@ -178,8 +185,7 @@ def despachar_paso_3(telefono):
         "3. Recuerda que la formación es gratuita y operarás en Demo, no estás obligado a depositar.\n\n"
         "Una vez realizado, envíame por favor tu número de ID o una captura de pantalla donde se vea para verificarlo."
     )
-    enviar_texto(telefono, texto)
-    enviar_imagen(telefono, URL_IMG_P3, caption="El ID es el número que aparece en la parte superior junto a tu nombre de usuario.")
+    enviar_imagen_con_caption(telefono, URL_IMG_P3, texto)
     actualizar_usuario(telefono, etapa=3)
 
 def responder_objecion_fondos(telefono):
@@ -192,7 +198,7 @@ def responder_objecion_fondos(telefono):
     enviar_texto(telefono, texto)
 
 def despachar_paso_4(telefono, id_weltrade, nombre):
-    # Alerta inmediata a tu número de WhatsApp
+    # Alerta a tu WhatsApp personal
     alerta_personal = (
         f"🔔 *NUEVO PROSPECTO PENDIENTE DE VALIDACIÓN*\n"
         f"👤 Nombre: {nombre}\n"
@@ -202,11 +208,8 @@ def despachar_paso_4(telefono, id_weltrade, nombre):
     )
     enviar_texto(MI_WHATSAPP_NOTIFICACIONES, alerta_personal)
 
-    # Envío de multimedia al usuario
-    enviar_imagen(telefono, URL_IMG_P4)
-    enviar_audio(telefono, URL_AUDIO_P4)
-    
-    mensaje_telegram = (
+    # Imagen + Audio + Texto
+    texto_telegram = (
         "¡Perfecto! Ya validamos tu información y quiero darte la bienvenida oficial a nuestra comunidad.\n\n"
         "A partir de este momento continuamos todo el proceso a través de Telegram, donde te entregaré el acceso a los cursos, sesiones en vivo y beneficios.\n\n"
         f"👉 Únete aquí a nuestro canal de soporte: {URL_TELEGRAM_SOPORTE}\n\n"
@@ -215,17 +218,16 @@ def despachar_paso_4(telefono, id_weltrade, nombre):
         "2. Tu país\n"
         f"3. Código de vinculación: *{id_weltrade}*"
     )
-    enviar_texto(telefono, mensaje_telegram)
+    enviar_imagen_con_caption(telefono, URL_IMG_P4, texto_telegram)
+    enviar_audio(telefono, URL_AUDIO_P4)
     actualizar_usuario(telefono, etapa=4, id_weltrade=id_weltrade)
 
 # ==========================================
-# DETECCIÓN LOCAL Y LLAMADAS CON RESGUARDO
+# UTILIDADES
 # ==========================================
 def extraer_id_texto(texto):
     match = re.search(r'\b(\d{6,8})\b', texto)
-    if match:
-        return match.group(1)
-    return None
+    return match.group(1) if match else None
 
 def es_pregunta_costos(texto):
     t = texto.lower()
@@ -242,7 +244,7 @@ def procesar_con_gemini_seguro(prompt):
         )
         return response.text
     except Exception as e:
-        print(f"Alerta: Gemini no disponible o sobrecargado ({e}). Se usa respuesta de respaldo.")
+        print(f"Gemini fallback activado: {e}")
         return None
 
 # ==========================================
@@ -275,9 +277,17 @@ def recibir():
                 nombre_contacto = contacts[0].get("profile", {}).get("name", "amigo") if contacts else "amigo"
                 tipo_msg = msg.get("type")
 
+                # Comando especial para resetear la prueba
+                if tipo_msg == "text":
+                    cuerpo = msg.get("text", {}).get("body", "").strip()
+                    if cuerpo.upper() in ["RESET", "REINICIAR"]:
+                        reiniciar_usuario(remitente)
+                        enviar_texto(remitente, "🔄 Conversación reiniciada. Envía un mensaje como 'Hola' para comenzar desde el Paso 1 con su imagen.")
+                        return jsonify({"status": "reset"}), 200
+
                 usuario = obtener_usuario(remitente, nombre_contacto)
 
-                # --- CASO IMAGEN (Captura de pantalla de Weltrade) ---
+                # --- 1. RECEPCIÓN DE IMÁGENES (CAPTURA DEL BROKER) ---
                 if tipo_msg == "image":
                     image_id = msg.get("image", {}).get("id")
                     headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}"}
@@ -288,7 +298,7 @@ def recibir():
                     id_extraido = None
                     if ai_client:
                         try:
-                            prompt_ocr = "Identifica el número de ID del usuario en esta captura de Weltrade. Devuelve solo el número o null."
+                            prompt_ocr = "Identifica el número de ID de usuario en esta captura de Weltrade. Devuelve únicamente el número o null."
                             resp = ai_client.models.generate_content(
                                 model='gemini-2.5-flash',
                                 contents=[types.Part.from_bytes(data=img_data, mime_type="image/jpeg"), prompt_ocr]
@@ -297,62 +307,71 @@ def recibir():
                             if match:
                                 id_extraido = match.group(1)
                         except Exception as e:
-                            print(f"Error procesando imagen: {e}")
+                            print(f"Error OCR: {e}")
 
                     if id_extraido:
                         despachar_paso_4(remitente, id_extraido, usuario["nombre"])
                     else:
                         texto_aclaracion = (
-                            "Veo tu captura, pero no se logra distinguir con claridad el número de ID de usuario.\n\n"
-                            "Por favor escribe tu número de ID aquí en texto o envíanos una captura donde se aprecie claramente el recuadro superior junto a tu nombre."
+                            "Veo tu captura, pero no logramos distinguir con claridad tu número de ID de registro.\n\n"
+                            "Por favor escribe tu número de ID aquí en texto para activarte los accesos."
                         )
                         enviar_texto(remitente, texto_aclaracion)
                     return jsonify({"status": "ok"}), 200
 
-                # --- CASO TEXTO ---
+                # --- 2. RECEPCIÓN DE TEXTO ---
                 if tipo_msg == "text":
                     texto_usuario = msg.get("text", {}).get("body", "").strip()
                     id_encontrado = extraer_id_texto(texto_usuario)
 
-                    # Si envió un ID en cualquier punto
+                    # Si el usuario envió su ID en texto
                     if id_encontrado and usuario["etapa"] >= 2:
                         despachar_paso_4(remitente, id_encontrado, usuario["nombre"])
                         return jsonify({"status": "ok"}), 200
 
-                    # Paso 0: Primer mensaje de entrada
+                    # Etapa 0: Primer contacto -> Paso 1 (con imagen)
                     if usuario["etapa"] == 0:
                         despachar_paso_1(remitente, usuario["nombre"])
                         return jsonify({"status": "ok"}), 200
 
-                    # Duda sobre dinero / costos / depósitos
+                    # Pregunta sobre dinero / costos / depósitos
                     if es_pregunta_costos(texto_usuario):
                         responder_objecion_fondos(remitente)
                         return jsonify({"status": "ok"}), 200
 
-                    # Avance normal según etapa
+                    # Respondió al Paso 1 (Experiencia) -> Avanza al Paso 2 (con imagen)
                     if usuario["etapa"] == 1:
                         despachar_paso_2(remitente)
-                    elif usuario["etapa"] == 2:
+                        return jsonify({"status": "ok"}), 200
+
+                    # Respondió al Paso 2 (Interés / Sí) -> Avanza al Paso 3 (con imagen)
+                    if usuario["etapa"] == 2:
                         despachar_paso_3(remitente)
-                    elif usuario["etapa"] == 3:
-                        # Preguntas fuera de guion en etapa de registro
+                        return jsonify({"status": "ok"}), 200
+
+                    # Etapa 3: Ya recibió el enlace y hace otra pregunta
+                    if usuario["etapa"] == 3:
                         respuesta_ia = procesar_con_gemini_seguro(
-                            f"Eres el soporte de ENTRA (Entrena Traders). Responde brevemente y reenfoca a registrarse en Weltrade ({URL_REGISTRO_WELTRADE}) para obtener su ID: {texto_usuario}"
+                            f"Eres el soporte de ENTRA. Responde brevemente a: {texto_usuario} y recuérdale que para acceder gratis debe crear su cuenta en {URL_REGISTRO_WELTRADE} y mandar su ID."
                         )
                         if respuesta_ia:
                             enviar_texto(remitente, respuesta_ia)
                         else:
-                            enviar_texto(remitente, f"Para resolver tus dudas y darte el acompañamiento, completa tu registro aquí: {URL_REGISTRO_WELTRADE} y envíame tu ID.")
-                    elif usuario["etapa"] == 4:
+                            enviar_texto(remitente, f"Para darte el acompañamiento y resolver todas tus dudas, regístrate gratis aquí: {URL_REGISTRO_WELTRADE} y compárteme tu ID.")
+                        return jsonify({"status": "ok"}), 200
+
+                    # Etapa 4: Recordatorio de Telegram
+                    if usuario["etapa"] == 4:
                         enviar_texto(remitente, f"¡Hola! Recuerda que todo tu soporte y las clases en vivo las estamos activando directamente en Telegram:\n👉 {URL_TELEGRAM_SOPORTE}")
+                        return jsonify({"status": "ok"}), 200
 
         return jsonify({"status": "ok"}), 200
     except Exception as e:
-        print(f"Error general webhook: {e}")
+        print(f"Error general en webhook: {e}")
         return jsonify({"status": "error"}), 500
 
 # ==========================================
-# TAREA DE SEGUIMIENTO PROGRAMADO
+# SEGUIMIENTOS AUTOMÁTICOS
 # ==========================================
 @app.route("/ejecutar-seguimientos", methods=["GET"])
 def ejecutar_seguimientos():
