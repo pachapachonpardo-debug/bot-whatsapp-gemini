@@ -37,7 +37,7 @@ async def handle_message(request: Request):
 
                 # Consulta a Gemini
                 ai_response = ai_client.models.generate_content(
-                    model="gemini-2.5-flash",
+                    model="gemini-3.8-flash",
                     contents=user_text,
                     config={"system_instruction": "Eres el asistente oficial de atencion al cliente de Creaciones Mi Pacha en WhatsApp. Responde de forma cordial, clara y concisa en espanol."}
                 )
