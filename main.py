@@ -1,4 +1,5 @@
 import os
+import traceback
 import httpx
 from fastapi import FastAPI, Request, Response
 from google import genai
@@ -30,10 +31,11 @@ async def handle_message(request: Request):
         entry = data.get("entry", [])[0].get("changes", [])[0].get("value", {})
         if "messages" in entry:
             message = entry["messages"][0]
-            from_number = message["from"]
+            from_number = message.get("from")
 
             if message.get("type") == "text":
-                user_text = message["text"]["body"]
+                user_text = message.get("text", {}).get("body", "")
+                print(f"--> [1] Mensaje recibido de {from_number}: {user_text}")
 
                 # Consulta a Gemini
                 ai_response = ai_client.models.generate_content(
@@ -42,8 +44,9 @@ async def handle_message(request: Request):
                     config={"system_instruction": "Eres el asistente oficial de atencion al cliente de Creaciones Mi Pacha en WhatsApp. Responde de forma cordial, clara y concisa en espanol."}
                 )
                 bot_reply = ai_response.text
+                print(f"--> [2] Respuesta Gemini: {bot_reply}")
 
-                # Respuesta a WhatsApp via Meta Graph API
+                # Envio a WhatsApp via Meta Graph API
                 url = f"https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages"
                 headers = {
                     "Authorization": f"Bearer {WHATSAPP_TOKEN}",
@@ -55,8 +58,11 @@ async def handle_message(request: Request):
                     "text": {"body": bot_reply}
                 }
                 async with httpx.AsyncClient() as client:
-                    await client.post(url, json=payload, headers=headers)
+                    resp = await client.post(url, json=payload, headers=headers)
+                    print(f"--> [3] Meta API Status: {resp.status_code}")
+                    print(f"--> [3] Meta API Body: {resp.text}")
     except Exception as e:
-        print(f"Error procesando mensaje: {e}")
+        print(f"--> ERROR en webhook: {e}")
+        traceback.print_exc()
 
     return {"status": "ok"}
